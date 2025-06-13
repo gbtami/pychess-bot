@@ -1,8 +1,9 @@
 """The main module that controls lichess-bot."""
 import argparse
+from lib.variants import VARIANT2BOARD  # order is important (we monkeypatch chess.Move)
 import chess
 import chess.pgn
-from chess.variant import find_variant
+# from chess.variant import find_variant
 from lib import engine_wrapper, model, lichess, matchmaking
 import json
 import logging
@@ -436,7 +437,7 @@ def next_event(control_queue: CONTROL_QUEUE_TYPE) -> EventType:
             return {}
     except InterruptedError:
         return {}
-
+    print("next event from the control queue", event)
     if "type" not in event:
         logger.warning("Unable to handle response from lichess.org:")
         logger.warning(event)
@@ -693,12 +694,14 @@ def play_game(li: lichess.Lichess,
             move_attempted = False
             try:
                 upd = next_update(game_stream)
+                print("next update from the game queue", upd)
                 u_type = upd["type"] if upd else "ping"
                 if u_type == "chatLine":
                     conversation.react(ChatLine(upd))
                 elif u_type == "gameState":
                     game.state = upd
-                    board = setup_board(game)
+                    chess960 = False  # TODO
+                    board = setup_board(game, chess960)
                     takeback_field = game.state.get("btakeback") if game.is_white else game.state.get("wtakeback")
 
                     if not is_game_over(game) and is_engine_move(game, prior_game, board):
@@ -827,15 +830,19 @@ def next_update(lines: Iterator[bytes]) -> GameEventType:
     return upd
 
 
-def setup_board(game: model.Game) -> chess.Board:
+# def setup_board(game: model.Game) -> chess.Board:
+def setup_board(game: model.Game, chess960: bool) -> chess.Board:
     """Set up the board."""
-    if game.variant_name.lower() == "chess960":
-        board = chess.Board(game.initial_fen, chess960=True)
-    elif game.variant_name == "From Position":
-        board = chess.Board(game.initial_fen)
-    else:
-        VariantBoard = find_variant(game.variant_name)
-        board = VariantBoard()
+#    if game.variant_name.lower() == "chess960":
+#        board = chess.Board(game.initial_fen, chess960=True)
+#    elif game.variant_name == "From Position":
+#        board = chess.Board(game.initial_fen)
+#    else:
+#        VariantBoard = find_variant(game.variant_name)
+#        board = VariantBoard()
+
+    VariantBoard = VARIANT2BOARD[game.variant_name]
+    board = VariantBoard(game.initial_fen, chess960=chess960)
 
     for move in game.state["moves"].split():
         try:

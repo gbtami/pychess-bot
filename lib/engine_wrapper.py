@@ -167,7 +167,8 @@ class EngineWrapper:
                                       lichess_bot_tbs,
                                       draw_or_resign_cfg)
 
-        if not isinstance(best_move, list) and best_move.move is None:
+        # if not isinstance(best_move, list) and best_move.move is None:
+        if False:
             best_move = get_online_move(li,
                                         board,
                                         game,
@@ -198,7 +199,7 @@ class EngineWrapper:
         if elapsed < min_time:
             time.sleep(to_seconds(min_time - elapsed))
 
-        self.add_comment(best_move, board)
+        # self.add_comment(best_move, board)  TODO
         self.print_stats()
         if best_move.resigned and len(board.move_stack) >= 2:
             li.resign(game.id)
