@@ -65,7 +65,7 @@ class FairyBoard:
         return FairyMove(uci)
 
     def parse_san(self, san: str):
-        # Match legal moves.
+        # TODO
         matched_move = None
         for move in sf.legal_moves(self.uci_variant, self.initial_fen, self.move_stack, self.chess960):
             if matched_move:
@@ -77,6 +77,10 @@ class FairyBoard:
             raise
 
         return FairyMove(matched_move)
+
+    def variation_san(self, pv: str):
+        # TODO
+        return [str(move) for move in pv]
 
     def push_xboard(self, san: str):
         move = self.parse_san(san)

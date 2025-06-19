@@ -198,7 +198,7 @@ class EngineWrapper:
         if elapsed < min_time:
             time.sleep(to_seconds(min_time - elapsed))
 
-        # self.add_comment(best_move, board)  TODO
+        self.add_comment(best_move, board)
         self.print_stats()
         if best_move.resigned and len(board.move_stack) >= 2:
             li.resign(game.id)
