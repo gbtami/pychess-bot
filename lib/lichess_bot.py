@@ -1,6 +1,6 @@
 """The main module that controls lichess-bot."""
 import argparse
-from lib.variants import VARIANT2BOARD  # order is important (we monkeypatch chess.Move)
+from lib.variants import fairy_board  # order is important (we monkeypatch chess.Move)
 import chess
 import chess.pgn
 # from chess.variant import find_variant
@@ -694,14 +694,13 @@ def play_game(li: lichess.Lichess,
             move_attempted = False
             try:
                 upd = next_update(game_stream)
-                print("next update from the game queue", upd)
+                print("--- next update from the game queue", upd)
                 u_type = upd["type"] if upd else "ping"
                 if u_type == "chatLine":
                     conversation.react(ChatLine(upd))
                 elif u_type == "gameState":
                     game.state = upd
-                    chess960 = False  # TODO
-                    board = setup_board(game, chess960)
+                    board = setup_board(game)
                     takeback_field = game.state.get("btakeback") if game.is_white else game.state.get("wtakeback")
 
                     if not is_game_over(game) and is_engine_move(game, prior_game, board):
@@ -830,8 +829,7 @@ def next_update(lines: Iterator[bytes]) -> GameEventType:
     return upd
 
 
-# def setup_board(game: model.Game) -> chess.Board:
-def setup_board(game: model.Game, chess960: bool) -> chess.Board:
+def setup_board(game: model.Game) -> chess.Board:
     """Set up the board."""
 #    if game.variant_name.lower() == "chess960":
 #        board = chess.Board(game.initial_fen, chess960=True)
@@ -841,8 +839,7 @@ def setup_board(game: model.Game, chess960: bool) -> chess.Board:
 #        VariantBoard = find_variant(game.variant_name)
 #        board = VariantBoard()
 
-    VariantBoard = VARIANT2BOARD[game.variant_name]
-    board = VariantBoard(game.initial_fen, chess960=chess960)
+    board = fairy_board(game.variant_name)(game.initial_fen)
 
     for move in game.state["moves"].split():
         try:

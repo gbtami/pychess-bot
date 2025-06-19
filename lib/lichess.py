@@ -281,7 +281,6 @@ class Lichess:
         :param game_id: The id of the game.
         :param move: The move to make.
         """
-        print("ITT", move.move, str(move.move))
         self.api_post("move", game_id, str(move.move),
                       params={"offeringDraw": str(move.draw_offered).lower()})
 
