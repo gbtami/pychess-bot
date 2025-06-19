@@ -167,8 +167,7 @@ class EngineWrapper:
                                       lichess_bot_tbs,
                                       draw_or_resign_cfg)
 
-        # if not isinstance(best_move, list) and best_move.move is None:
-        if False:
+        if not isinstance(best_move, list) and best_move.move is None:
             best_move = get_online_move(li,
                                         board,
                                         game,

@@ -46,7 +46,7 @@ class FairyBoard:
     def __init__(self, initial_fen="startpos"):
         self.initial_fen = (
             initial_fen
-            if initial_fen != "startpos"
+            if initial_fen and initial_fen != "startpos"
             else sf.start_fen(self.uci_variant)
         )
         self.move_stack = []
