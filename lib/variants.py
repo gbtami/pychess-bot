@@ -8,6 +8,9 @@ except ImportError:
     print("No pyffish module installed!")
 
 
+START_FEN = {variant: sf.start_fen(variant) for variant in sf.variants()}
+
+
 class FairyMove:
     def __init__(self, uci: str):
         self.move = uci
@@ -35,34 +38,18 @@ def fairy_board(variant):
         uci_variant = "chess" if variant == "standard" else variant
         xboard_variant = "normal" if variant == "standard" else variant
         chess960 = is_chess960
+        initial_fen = START_FEN[uci_variant]
 
     return FairyBoardClass
 
 
 class FairyBoard:
-    uci_variant = "chess"
-    xboard_variant = "normal"
-
     def __init__(self, initial_fen=None, count_started=0):
-        if initial_fen in (None, "None", "",  "startpos"):
-            fen = sf.start_fen(self.uci_variant)
-            self.initial_fen = fen
-        else:
+        if initial_fen not in (None, "None", "",  "startpos"):
             self.initial_fen = initial_fen
 
         self.move_stack = []
         self.turn = True if self.initial_fen.split()[1] == "w" else False
-        self.sfen = False
-        self.show_promoted = self.uci_variant in (
-            "makruk",
-            "makpong",
-            "cambodian",
-            "bughouse",
-            "supply",
-            "makbug",
-        )
-        self.manual_count = count_started != 0
-        self.count_started = count_started
 
     def push(self, move: FairyMove):
         self.move_stack.append(move)
@@ -78,17 +65,7 @@ class FairyBoard:
 
     def parse_san(self, san: str):
         # TODO
-        matched_move = None
-        for move in sf.legal_moves(self.uci_variant, self.initial_fen, self.move_stack, self.chess960):
-            if matched_move:
-                raise
-            if move == san:
-                matched_move = move
-
-        if not matched_move:
-            raise
-
-        return FairyMove(matched_move)
+        return san
 
     def variation_san(self, pv: str):
         # TODO
@@ -104,24 +81,17 @@ class FairyBoard:
         self.turn = not self.turn
 
     def is_game_over(self):
+        # TODO
         return False
 
     def fen(self, *, shredder=False, en_passant="legal", promoted=None):
-        return sf.get_fen(
-            self.uci_variant,
-            self.initial_fen,
-            self.move_stack,
-            self.chess960,
-            self.sfen,
-            self.show_promoted,
-            self.count_started,
-        )
+        # TODO
+        return self.initial_fen
 
     @property
     def occupied(self):
-        placement = self.fen().split()[0]
-        pieces = [c for c in placement if c.isalpha()]
-        return len(pieces)
+        # TODO
+        return 64
 
     def copy(self, stack=False):
         return type(self)()
