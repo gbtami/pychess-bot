@@ -43,14 +43,26 @@ class FairyBoard:
     uci_variant = "chess"
     xboard_variant = "normal"
 
-    def __init__(self, initial_fen="startpos"):
-        self.initial_fen = (
-            initial_fen
-            if initial_fen and initial_fen != "startpos"
-            else sf.start_fen(self.uci_variant)
-        )
+    def __init__(self, initial_fen=None, count_started=0):
+        if initial_fen in (None, "None", "",  "startpos"):
+            fen = sf.start_fen(self.uci_variant)
+            self.initial_fen = fen
+        else:
+            self.initial_fen = initial_fen
+
         self.move_stack = []
         self.turn = True if self.initial_fen.split()[1] == "w" else False
+        self.sfen = False
+        self.show_promoted = self.uci_variant in (
+            "makruk",
+            "makpong",
+            "cambodian",
+            "bughouse",
+            "supply",
+            "makbug",
+        )
+        self.manual_count = count_started != 0
+        self.count_started = count_started
 
     def push(self, move: FairyMove):
         self.move_stack.append(move)
@@ -88,21 +100,28 @@ class FairyBoard:
         return move
 
     def pop(self):
-        del self.move_stack[-1]
+        self.move_stack.pop()
         self.turn = not self.turn
 
     def is_game_over(self):
         return False
 
-    def fen(self, shredder=True, en_passant="fen"):
-        if self.initial_fen is None:
-            return self.starting_fen
-        else:
-            return self.initial_fen
+    def fen(self, *, shredder=False, en_passant="legal", promoted=None):
+        return sf.get_fen(
+            self.uci_variant,
+            self.initial_fen,
+            self.move_stack,
+            self.chess960,
+            self.sfen,
+            self.show_promoted,
+            self.count_started,
+        )
 
     @property
     def occupied(self):
-        return 64  # TODO
+        placement = self.fen().split()[0]
+        pieces = [c for c in placement if c.isalpha()]
+        return len(pieces)
 
     def copy(self, stack=False):
         return type(self)()

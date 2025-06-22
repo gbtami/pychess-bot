@@ -436,7 +436,6 @@ def next_event(control_queue: CONTROL_QUEUE_TYPE) -> EventType:
             return {}
     except InterruptedError:
         return {}
-    print("next event from the control queue", event)
     if "type" not in event:
         logger.warning("Unable to handle response from lichess.org:")
         logger.warning(event)
@@ -693,7 +692,6 @@ def play_game(li: lichess.Lichess,
             move_attempted = False
             try:
                 upd = next_update(game_stream)
-                print("--- next update from the game queue", upd)
                 u_type = upd["type"] if upd else "ping"
                 if u_type == "chatLine":
                     conversation.react(ChatLine(upd))
