@@ -1,8 +1,8 @@
 """The main module that controls lichess-bot."""
 import argparse
+from lib.variants import fairy_board  # order is important (we monkeypatch chess.Move)
 import chess
 import chess.pgn
-from chess.variant import find_variant
 from lib import engine_wrapper, model, lichess, matchmaking
 import json
 import logging
@@ -849,15 +849,7 @@ def next_update(lines: Iterator[bytes]) -> GameEventType:
 
 def setup_board(game: model.Game) -> chess.Board:
     """Set up the board."""
-    if game.variant_name.lower() == "chess960":
-        board = chess.Board(game.initial_fen, chess960=True)
-    elif game.variant_name == "From Position":
-        fen = cast(str, game.initial_fen)
-        board = chess.Board(fen, chess960=model.is_chess_960(fen))
-
-    else:
-        VariantBoard = find_variant(game.variant_name)
-        board = VariantBoard()
+    board = fairy_board(game.variant_name)(game.initial_fen)
 
     for move in game.state["moves"].split():
         try:
