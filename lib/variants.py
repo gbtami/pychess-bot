@@ -55,13 +55,24 @@ class FairyBoard:
         self.move_stack.append(move)
         self.turn = not self.turn
 
+    @staticmethod
+    def _fix_drop_case(uci: str) -> str:
+        # python-chess's UCI parser unconditionally lowercases all move tokens
+        # before calling push_uci/parse_uci (chess/engine.py lines 1900, 1907).
+        # For drop moves pyffish requires an uppercase piece letter (e.g. "B@f5",
+        # "+L@a4"), so we restore the character immediately before "@" to uppercase.
+        at = uci.find("@")
+        if at > 0:
+            uci = uci[:at - 1] + uci[at - 1].upper() + uci[at:]
+        return uci
+
     def push_uci(self, uci: str):
-        move = FairyMove(uci)
+        move = FairyMove(self._fix_drop_case(uci))
         self.push(move)
         return move
 
     def parse_uci(self, uci: str):
-        return FairyMove(uci)
+        move = FairyMove(self._fix_drop_case(uci))
 
     def parse_san(self, san: str):
         # TODO
