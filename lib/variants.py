@@ -71,6 +71,10 @@ class FairyBoard:
         # TODO
         return [str(move) for move in pv]
 
+    def san(self, move):
+        # TODO: pyffish does not expose SAN; return UCI string as fallback
+        return str(move)
+
     def push_xboard(self, san: str):
         move = self.parse_san(san)
         self.push(move)
@@ -85,16 +89,21 @@ class FairyBoard:
         return False
 
     def fen(self, *, shredder=False, en_passant="legal", promoted=None):
-        # TODO
-        return self.initial_fen
+        moves = [m.uci() for m in self.move_stack]
+        return sf.get_fen(self.uci_variant, self.initial_fen, moves)
 
     @property
     def occupied(self):
-        # TODO
-        return 64
+        # Return 0 so engine_wrapper's piece-count guards (syzygy, gaviota,
+        # draw-offer) always treat this as "too few pieces / not applicable"
+        # for pychess variants, which don't support those features.
+        return 0
 
     def copy(self, stack=False):
-        return type(self)()
+        new = type(self)(self.initial_fen)
+        if stack:
+            new.move_stack = self.move_stack.copy()
+        return new
 
     def root(self):
-        return type(self)()
+        return type(self)(self.initial_fen)
