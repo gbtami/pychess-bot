@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
+# ruff: noqa: D100, D101, D102, D103, D105, D107, PLW1641
 
 import re
+from typing import Literal, Self, SupportsInt, cast
+
 import chess
-try:
-    import pyffish as sf
-    sf.set_option("VariantPath", "variants.ini")
-except ImportError:
-    print("No pyffish module installed!")
+import pyffish as sf
 
+sf.set_option("VariantPath", "variants.ini")
 
-START_FEN = {variant: sf.start_fen(variant) for variant in sf.variants()}
+START_FEN: dict[str, str] = {variant: sf.start_fen(variant) for variant in sf.variants()}
 
 
 def _normalize_variant_name(variant: str) -> tuple[str, str, bool]:
@@ -55,37 +54,37 @@ def _normalize_variant_name(variant: str) -> tuple[str, str, bool]:
 
 
 class FairyMove:
-    def __init__(self, uci: str):
+    def __init__(self, uci: str) -> None:
         self.move = uci
 
-    def uci(self):
+    def uci(self) -> str:
         return self.move
 
-    def xboard(self):
+    def xboard(self) -> str:
         return self.move
 
     @classmethod
-    def from_uci(cls, uci):
+    def from_uci(cls, uci: str) -> Self:
         return cls(uci)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, FairyMove):
             return self.move == other.move
         if isinstance(other, str):
             return self.move == other
         return NotImplemented
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.move)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.move
 
 
-chess.Move = FairyMove
+chess.Move = FairyMove  # type: ignore[misc, assignment]
 
 
-def fairy_board(variant):
+def fairy_board(variant: str) -> type[chess.Board]:
     pyffish_variant, cecp_variant, is_chess960 = _normalize_variant_name(variant)
 
     class FairyBoardClass(FairyBoard):
@@ -94,18 +93,24 @@ def fairy_board(variant):
         chess960 = is_chess960
         initial_fen = START_FEN[pyffish_variant]
 
-    return FairyBoardClass
+    return cast("type[chess.Board]", FairyBoardClass)
 
 
 class FairyBoard:
-    def __init__(self, initial_fen=None, count_started=0):
-        if initial_fen not in (None, "None", "",  "startpos"):
+    uci_variant: str
+    xboard_variant: str
+    chess960: bool
+    initial_fen: str
+
+    def __init__(self, initial_fen: str | None = None, count_started: int = 0) -> None:
+        del count_started
+        if initial_fen is not None and initial_fen not in ("None", "", "startpos"):
             self.initial_fen = initial_fen
 
-        self.move_stack = []
-        self.turn = True if self.initial_fen.split()[1] == "w" else False
+        self.move_stack: list[FairyMove] = []
+        self.turn = self.initial_fen.split()[1] == "w"
 
-    def push(self, move: FairyMove):
+    def push(self, move: FairyMove) -> None:
         self.move_stack.append(move)
         self.turn = not self.turn
 
@@ -116,7 +121,7 @@ class FairyBoard:
         # uppercase piece letter (e.g. "B@f5", "+L@a4"), so restore it.
         at = uci.find("@")
         if at > 0:
-            uci = uci[:at - 1] + uci[at - 1].upper() + uci[at:]
+            uci = uci[: at - 1] + uci[at - 1].upper() + uci[at:]
         return uci
 
     @staticmethod
@@ -125,24 +130,23 @@ class FairyBoard:
         san = san.replace("0", "O")
         # Engines sometimes decorate PV/bestmove SAN. Decorations must not
         # affect matching, but check/mate suffixes are also harmless to ignore.
-        san = re.sub(r"[+#?!]+$", "", san)
-        return san
+        return re.sub(r"[+#?!]+$", "", san)
 
     def _legal_moves(self) -> list[str]:
-        return sf.legal_moves(self.uci_variant, self.initial_fen, [m.uci() for m in self.move_stack])
+        return sf.legal_moves(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
 
     def _current_fen(self) -> str:
-        return sf.get_fen(self.uci_variant, self.initial_fen, [m.uci() for m in self.move_stack])
+        return sf.get_fen(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
 
-    def push_uci(self, uci: str):
+    def push_uci(self, uci: str) -> FairyMove:
         move = FairyMove(self._fix_drop_case(uci))
         self.push(move)
         return move
 
-    def parse_uci(self, uci: str):
+    def parse_uci(self, uci: str) -> FairyMove:
         return FairyMove(self._fix_drop_case(uci))
 
-    def parse_xboard(self, xboard: str):
+    def parse_xboard(self, xboard: str) -> FairyMove:
         token = self._fix_drop_case(xboard.strip())
         legal_moves = self._legal_moves()
 
@@ -161,13 +165,15 @@ class FairyBoard:
         if len(matches) == 1:
             return FairyMove(matches[0])
         if len(matches) > 1:
-            raise ValueError(f"Ambiguous XBoard/SAN move {xboard!r} on {fen}")
-        raise ValueError(f"Illegal XBoard/SAN move {xboard!r} on {fen}")
+            msg = f"Ambiguous XBoard/SAN move {xboard!r} on {fen}"
+            raise ValueError(msg)
+        msg = f"Illegal XBoard/SAN move {xboard!r} on {fen}"
+        raise ValueError(msg)
 
-    def parse_san(self, san: str):
+    def parse_san(self, san: str) -> FairyMove:
         return self.parse_xboard(san)
 
-    def variation_san(self, pv):
+    def variation_san(self, pv: list[FairyMove]) -> list[str]:
         board = self.copy(stack=True)
         san_moves = []
         for move in pv:
@@ -175,36 +181,44 @@ class FairyBoard:
             board.push(move)
         return san_moves
 
-    def san(self, move):
-        return sf.get_san(self.uci_variant, self.fen(), move.uci() if hasattr(move, "uci") else str(move))
+    def san(self, move: FairyMove | chess.Move | str) -> str:
+        uci = move.uci() if hasattr(move, "uci") else str(move)
+        return sf.get_san(self.uci_variant, self.fen(), uci)
 
-    def xboard(self, move):
+    def xboard(self, move: FairyMove | chess.Move | str) -> str:
         return move.xboard() if hasattr(move, "xboard") else str(move)
 
-    def push_xboard(self, xboard: str):
+    def push_xboard(self, xboard: str) -> FairyMove:
         move = self.parse_xboard(xboard)
         self.push(move)
         return move
 
-    def pop(self):
+    def pop(self) -> None:
         self.move_stack.pop()
         self.turn = not self.turn
 
-    def is_game_over(self, *, claim_draw=False):
-        # TODO
+    def is_game_over(self, *, claim_draw: bool = False) -> bool:
+        del claim_draw
         return False
 
-    def fen(self, *, shredder=False, en_passant="legal", promoted=None):
+    def fen(
+        self,
+        *,
+        shredder: bool = False,
+        en_passant: Literal["legal", "fen", "xfen"] = "legal",
+        promoted: bool | None = None,
+    ) -> str:
+        del shredder, en_passant, promoted
         return self._current_fen()
 
     @property
-    def occupied(self):
+    def occupied(self) -> int:
         # Return 0 so engine_wrapper's piece-count guards (syzygy, gaviota,
         # draw-offer) always treat this as "too few pieces / not applicable"
         # for pychess variants, which don't support those features.
         return 0
 
-    def copy(self, stack=False):
+    def copy(self, stack: bool | SupportsInt = False) -> Self:
         if stack is False:
             # python-chess copy(stack=False) preserves the current position but
             # discards the move stack. We represent that by using current FEN as
@@ -215,7 +229,7 @@ class FairyBoard:
             new.move_stack = self.move_stack.copy()
         else:
             count = int(stack)
-            moves = [m.uci() for m in self.move_stack]
+            moves = [move.uci() for move in self.move_stack]
             prefix = moves[:-count] if count else moves
             kept = self.move_stack[-count:].copy() if count else []
             new = type(self)(sf.get_fen(self.uci_variant, self.initial_fen, prefix))
@@ -223,15 +237,17 @@ class FairyBoard:
         new.turn = self.turn
         return new
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, FairyBoard):
             return NotImplemented
-        return (type(self).uci_variant == type(other).uci_variant
-                and type(self).xboard_variant == type(other).xboard_variant
-                and self.chess960 == other.chess960
-                and self.initial_fen == other.initial_fen
-                and self.move_stack == other.move_stack
-                and self.turn == other.turn)
+        return (
+            type(self).uci_variant == type(other).uci_variant
+            and type(self).xboard_variant == type(other).xboard_variant
+            and self.chess960 == other.chess960
+            and self.initial_fen == other.initial_fen
+            and self.move_stack == other.move_stack
+            and self.turn == other.turn
+        )
 
-    def root(self):
+    def root(self) -> Self:
         return type(self)(self.initial_fen)
