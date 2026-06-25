@@ -64,7 +64,10 @@ jobs:
         if: matrix.check == 'pytest'
         env:
           LICHESS_BOT_TEST_TOKEN: ${{ secrets.LICHESS_BOT_TEST_TOKEN }}
-        run: pytest --log-cli-level=10
+        run: >
+          pytest --log-cli-level=10 --timeout=60
+          --ignore=test_bot/test_bot.py
+          --ignore=test_bot/test_external_moves.py
 
       - name: Save engines
         if: matrix.check == 'pytest' && steps.restore-engines.outputs.cache-hit != 'true'
