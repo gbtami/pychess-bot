@@ -1,0 +1,78 @@
+name: PyChess Bot CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [pychess-bot]
+  pull_request:
+    branches: [pychess-bot]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test-typecheck:
+    name: ${{ matrix.check }} / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: ruff
+            python: "3.14"
+          - check: pytest
+            python: "3.14"
+          - check: mypy
+            python: "3.14"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            test_bot/test-requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r test_bot/test-requirements.txt
+
+      - name: Restore engines
+        id: restore-engines
+        if: matrix.check == 'pytest'
+        uses: actions/cache/restore@v5
+        with:
+          path: TEMP
+          key: ${{ runner.os }}-engines
+
+      - name: Run ruff
+        if: matrix.check == 'ruff'
+        run: ruff check --config test_bot/ruff.toml
+
+      - name: Run pytest
+        if: matrix.check == 'pytest'
+        env:
+          LICHESS_BOT_TEST_TOKEN: ${{ secrets.LICHESS_BOT_TEST_TOKEN }}
+        run: pytest --log-cli-level=10
+
+      - name: Save engines
+        if: matrix.check == 'pytest' && steps.restore-engines.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: TEMP
+          key: ${{ runner.os }}-engines
+
+      - name: Run mypy
+        if: matrix.check == 'mypy'
+        run: mypy --strict .
