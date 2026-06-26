@@ -9,6 +9,8 @@ import pyffish as sf
 sf.set_option("VariantPath", "variants.ini")
 
 START_FEN: dict[str, str] = {variant: sf.start_fen(variant) for variant in sf.variants()}
+TEN_RANK_BOARD_HEIGHT = 10
+RANKED_SQUARE_REGEX = re.compile(r"([a-z])([0-9]{1,2})")
 
 
 def _normalize_variant_name(variant: str) -> tuple[str, str, bool]:
@@ -127,10 +129,46 @@ class FairyBoard:
     @staticmethod
     def _clean_san(san: str) -> str:
         san = san.strip()
-        san = san.replace("0", "O")
+        if san.startswith("0-0"):
+            san = san.replace("0", "O")
         # Engines sometimes decorate PV/bestmove SAN. Decorations must not
         # affect matching, but check/mate suffixes are also harmless to ignore.
         return re.sub(r"[+#?!]+$", "", san)
+
+    @staticmethod
+    def _board_height(fen: str) -> int:
+        return len(fen.split(maxsplit=1)[0].split("/"))
+
+    def _has_zero_based_cecp_ranks(self) -> bool:
+        return self._board_height(self.initial_fen) == TEN_RANK_BOARD_HEIGHT
+
+    def _convert_cecp_rank_text(self, text: str, delta: int) -> str:
+        if not self._has_zero_based_cecp_ranks():
+            return text
+
+        def replace(match: re.Match[str]) -> str:
+            file_name = match.group(1)
+            rank = int(match.group(2)) + delta
+            return f"{file_name}{rank}"
+
+        return RANKED_SQUARE_REGEX.sub(replace, text)
+
+    def _cecp_to_internal_xboard(self, xboard: str) -> str:
+        return self._convert_cecp_rank_text(xboard, 1)
+
+    def _internal_to_cecp_xboard(self, xboard: str) -> str:
+        return self._convert_cecp_rank_text(xboard, -1)
+
+    def _xboard_coordinate_candidates(self, xboard: str) -> list[str]:
+        converted = self._cecp_to_internal_xboard(xboard)
+        return [xboard] if converted == xboard else [converted, xboard]
+
+    def _xboard_san_candidates(self, xboard: str) -> list[str]:
+        converted = self._cecp_to_internal_xboard(xboard)
+        candidates = [self._clean_san(converted)]
+        if converted != xboard:
+            candidates.append(self._clean_san(xboard))
+        return candidates
 
     def _legal_moves(self) -> list[str]:
         return sf.legal_moves(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
@@ -151,22 +189,27 @@ class FairyBoard:
         legal_moves = self._legal_moves()
 
         # Most CECP engines use coordinate notation when san=0/rejected.
-        if token in legal_moves:
-            return FairyMove(token)
+        # CECP counts ranks 0..9 on exactly 10-rank boards, while pyffish and
+        # pychess.org use 1..10. Accept both at input so older/non-standard
+        # engines that already use pyffish-style coordinates keep working when
+        # that interpretation does not conflict with strict CECP notation.
+        for candidate in self._xboard_coordinate_candidates(token):
+            if candidate in legal_moves:
+                return FairyMove(candidate)
 
-        wanted = self._clean_san(token)
         fen = self._current_fen()
-        matches = []
-        for move in legal_moves:
-            san = self._clean_san(sf.get_san(self.uci_variant, fen, move))
-            if san == wanted:
-                matches.append(move)
+        for wanted in self._xboard_san_candidates(token):
+            matches = []
+            for move in legal_moves:
+                san = self._clean_san(sf.get_san(self.uci_variant, fen, move))
+                if san == wanted:
+                    matches.append(move)
 
-        if len(matches) == 1:
-            return FairyMove(matches[0])
-        if len(matches) > 1:
-            msg = f"Ambiguous XBoard/SAN move {xboard!r} on {fen}"
-            raise ValueError(msg)
+            if len(matches) == 1:
+                return FairyMove(matches[0])
+            if len(matches) > 1:
+                msg = f"Ambiguous XBoard/SAN move {xboard!r} on {fen}"
+                raise ValueError(msg)
         msg = f"Illegal XBoard/SAN move {xboard!r} on {fen}"
         raise ValueError(msg)
 
@@ -186,7 +229,8 @@ class FairyBoard:
         return sf.get_san(self.uci_variant, self.fen(), uci)
 
     def xboard(self, move: FairyMove | chess.Move | str) -> str:
-        return move.xboard() if hasattr(move, "xboard") else str(move)
+        internal = move.xboard() if hasattr(move, "xboard") else str(move)
+        return self._internal_to_cecp_xboard(internal)
 
     def push_xboard(self, xboard: str) -> FairyMove:
         move = self.parse_xboard(xboard)
