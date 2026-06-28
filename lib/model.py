@@ -1,5 +1,6 @@
 """Store information about a challenge, game or player in a class."""
 import math
+from typing import cast
 from urllib.parse import urljoin
 import logging
 import datetime
@@ -10,6 +11,7 @@ from lib.timer import Timer, msec, seconds, sec_str, to_msec, to_seconds, years
 from lib.config import Configuration
 from collections import defaultdict, Counter
 from lib.lichess_types import UserProfileType, ChallengeType, GameEventType, PlayerType
+from lib.variants import normalize_challenge_variant_key, normalize_incoming_challenge_variant_key
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ class Challenge:
         """:param user_profile: Information about our bot."""
         self.id = challenge_info["id"]
         self.rated = challenge_info["rated"]
-        self.variant = challenge_info["variant"]["key"]
+        self.raw_variant = challenge_info["variant"]["key"]
         self.perf_name = challenge_info["perf"]["name"]
         self.speed = challenge_info["speed"]
         self.increment = challenge_info.get("timeControl", {}).get("increment")
@@ -36,22 +38,22 @@ class Challenge:
         self.challenge_target = Player(challenge_info.get("destUser") or {})
         self.from_self = self.challenger.name == user_profile["username"]
         self.initial_fen = challenge_info.get("initialFen", "startpos")
+        challenge_info_dict = cast("dict[str, object]", challenge_info)
+        self.variant = normalize_incoming_challenge_variant_key(
+            self.raw_variant,
+            self.initial_fen,
+            chess960=bool(challenge_info_dict.get("chess960", False)),
+        )
         color = challenge_info["color"]
         self.color = color if color != "random" else challenge_info["finalColor"]
         self.time_control = challenge_info["timeControl"]
 
     def is_supported_variant(self, challenge_cfg: Configuration) -> bool:
         """Check whether the variant is supported."""
-        if self.variant not in challenge_cfg.variants:
-            return False
-
-        if self.initial_fen == "startpos":
-            return True
-
-        if is_chess_960(self.initial_fen):
-            return "chess960" in challenge_cfg.variants
-
-        return True
+        normalized_cfg_variants = {
+            normalize_challenge_variant_key(config_variant) for config_variant in challenge_cfg.variants
+        }
+        return self.variant in normalized_cfg_variants
 
     def is_supported_time_control(self, challenge_cfg: Configuration) -> bool:
         """Check whether the time control is supported."""

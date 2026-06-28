@@ -55,6 +55,35 @@ def _normalize_variant_name(variant: str) -> tuple[str, str, bool]:
     return pyffish_variant, xboard_variant, is_chess960
 
 
+def normalize_challenge_variant_key(variant: str, *, chess960: bool = False) -> str:
+    """Return a canonical challenge/config variant key, including 960 when relevant."""
+    name = variant.strip().lower()
+    name = name.replace("_", "-")
+    name = re.sub(r"\s+", "-", name)
+
+    pyffish_variant, xboard_variant, normalized_chess960 = _normalize_variant_name(name)
+    canonical = "standard" if pyffish_variant == "chess" else pyffish_variant
+    is_chess960 = chess960 or normalized_chess960 or xboard_variant == "fischerandom"
+
+    if is_chess960:
+        return "chess960" if canonical == "standard" else f"{canonical}960"
+    return canonical
+
+
+def normalize_incoming_challenge_variant_key(
+    variant: str, initial_fen: str = "startpos", *, chess960: bool = False
+) -> str:
+    """Return a canonical key for an incoming challenge, inferring 960 from standard FENs."""
+    inferred_chess960 = chess960
+    if (
+        not inferred_chess960
+        and initial_fen not in ("", "startpos")
+        and normalize_challenge_variant_key(variant) == "standard"
+    ):
+        inferred_chess960 = chess.Board(initial_fen) != chess.Board(initial_fen, chess960=True)
+    return normalize_challenge_variant_key(variant, chess960=inferred_chess960)
+
+
 class FairyMove:
     def __init__(self, uci: str) -> None:
         self.move = uci
