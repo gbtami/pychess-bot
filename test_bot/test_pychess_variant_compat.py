@@ -11,7 +11,8 @@ from lib.timer import Timer
 from lib.variants import normalize_challenge_variant_key, normalize_incoming_challenge_variant_key
 
 
-def _challenge_config(variants: list[str]):
+def _challenge_config(variants: list[str]) -> config.Configuration:
+    """Build a challenge config section with only the requested variants enabled."""
     with open("./config.yml.default") as file:
         cfg = yaml.safe_load(file)
     cfg["token"] = ""
@@ -21,7 +22,7 @@ def _challenge_config(variants: list[str]):
     cfg["challenge"]["max_rating"] = 4000
     cfg["challenge"]["rating_difference"] = None
     cfg["challenge"]["variants"] = variants
-    return config.Configuration(cfg).challenge
+    return config.Configuration(cfg["challenge"])
 
 
 def _challenge(
@@ -46,6 +47,7 @@ def _challenge(
 
 
 def test_variant_key_normalization_accepts_lichess_and_pychess_spellings() -> None:
+    """Accept both lichess-style and pychess-style variant identifiers."""
     assert normalize_challenge_variant_key("standard") == "standard"
     assert normalize_challenge_variant_key("chess") == "standard"
     assert normalize_challenge_variant_key("kingOfTheHill") == "kingofthehill"
@@ -58,6 +60,7 @@ def test_variant_key_normalization_accepts_lichess_and_pychess_spellings() -> No
 
 
 def test_incoming_challenge_normalization_handles_server_keys_and_960() -> None:
+    """Normalize incoming server payloads, including 960-specific cases."""
     assert normalize_incoming_challenge_variant_key("kingofthehill") == "kingofthehill"
     assert (
         normalize_incoming_challenge_variant_key("racingkings", chess960=True)
@@ -73,6 +76,7 @@ def test_incoming_challenge_normalization_handles_server_keys_and_960() -> None:
 
 
 def test_challenge_matching_uses_normalized_variant_keys() -> None:
+    """Match incoming challenge variants against normalized config entries."""
     challenge_cfg = _challenge_config(
         ["kingOfTheHill", "racingKings960", "threeCheck", "chess960", "s-chess"]
     )

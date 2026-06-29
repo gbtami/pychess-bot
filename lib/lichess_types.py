@@ -191,6 +191,7 @@ class ChallengeType(TypedDict, total=False):
     declineReason: str
     declineReasonKey: str
     initialFen: str
+    chess960: bool
     error: str
     ratelimit: dict[str, str | int]
     bot_is_rate_limited: bool

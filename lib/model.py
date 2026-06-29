@@ -1,6 +1,5 @@
 """Store information about a challenge, game or player in a class."""
 import math
-from typing import cast
 from urllib.parse import urljoin
 import logging
 import datetime
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def is_chess_960(fen: str) -> bool:
     """Determine whether an FEN string represents a chess960 game."""
-    return chess.Board(fen) != chess.Board(fen, chess960=True)
+    return bool(chess.Board(fen) != chess.Board(fen, chess960=True))
 
 
 class Challenge:
@@ -38,11 +37,10 @@ class Challenge:
         self.challenge_target = Player(challenge_info.get("destUser") or {})
         self.from_self = self.challenger.name == user_profile["username"]
         self.initial_fen = challenge_info.get("initialFen", "startpos")
-        challenge_info_dict = cast("dict[str, object]", challenge_info)
         self.variant = normalize_incoming_challenge_variant_key(
             self.raw_variant,
             self.initial_fen,
-            chess960=bool(challenge_info_dict.get("chess960", False)),
+            chess960=challenge_info.get("chess960", False),
         )
         color = challenge_info["color"]
         self.color = color if color != "random" else challenge_info["finalColor"]
