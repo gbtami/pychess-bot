@@ -4,11 +4,15 @@ import re
 from typing import Literal, Self, SupportsInt, cast
 
 import chess
-import pyffish as sf
 
+import pyffish as sf
+import pyffish_alice as sf_alice
 sf.set_option("VariantPath", "variants.ini")
 
+
 START_FEN: dict[str, str] = {variant: sf.start_fen(variant) for variant in sf.variants()}
+START_FEN["alice"] = sf_alice.start_fen("alice")
+
 TEN_RANK_BOARD_HEIGHT = 10
 RANKED_SQUARE_REGEX = re.compile(r"([a-z])([0-9]{1,2})")
 
@@ -123,6 +127,7 @@ def fairy_board(variant: str) -> type[chess.Board]:
         xboard_variant = cecp_variant
         chess960 = is_chess960
         initial_fen = START_FEN[pyffish_variant]
+        rules = sf_alice if uci_variant == "alice" else sf
 
     return cast("type[chess.Board]", FairyBoardClass)
 
@@ -200,10 +205,10 @@ class FairyBoard:
         return candidates
 
     def _legal_moves(self) -> list[str]:
-        return sf.legal_moves(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
+        return self.rules.legal_moves(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
 
     def _current_fen(self) -> str:
-        return sf.get_fen(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
+        return self.rules.get_fen(self.uci_variant, self.initial_fen, [move.uci() for move in self.move_stack])
 
     def push_uci(self, uci: str) -> FairyMove:
         move = FairyMove(self._fix_drop_case(uci))
@@ -230,7 +235,7 @@ class FairyBoard:
         for wanted in self._xboard_san_candidates(token):
             matches = []
             for move in legal_moves:
-                san = self._clean_san(sf.get_san(self.uci_variant, fen, move))
+                san = self._clean_san(self.rules.get_san(self.uci_variant, fen, move))
                 if san == wanted:
                     matches.append(move)
 
@@ -255,7 +260,7 @@ class FairyBoard:
 
     def san(self, move: FairyMove | chess.Move | str) -> str:
         uci = move.uci() if hasattr(move, "uci") else str(move)
-        return sf.get_san(self.uci_variant, self.fen(), uci)
+        return self.rules.get_san(self.uci_variant, self.fen(), uci)
 
     def xboard(self, move: FairyMove | chess.Move | str) -> str:
         internal = move.xboard() if hasattr(move, "xboard") else str(move)
@@ -305,7 +310,7 @@ class FairyBoard:
             moves = [move.uci() for move in self.move_stack]
             prefix = moves[:-count] if count else moves
             kept = self.move_stack[-count:].copy() if count else []
-            new = type(self)(sf.get_fen(self.uci_variant, self.initial_fen, prefix))
+            new = type(self)(self.rules.get_fen(self.uci_variant, self.initial_fen, prefix))
             new.move_stack = kept
         new.turn = self.turn
         return new

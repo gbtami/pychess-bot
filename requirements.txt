@@ -4,3 +4,4 @@ requests~=2.34
 backoff~=2.2
 rich~=15.0
 pyffish==0.0.89
+pyffish-alice==0.0.3
