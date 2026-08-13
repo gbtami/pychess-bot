@@ -3,6 +3,7 @@ import random
 import logging
 import datetime
 import contextlib
+from pathlib import Path
 from lib import model
 from lib.timer import Timer, days, seconds, minutes, years
 from collections import defaultdict
@@ -16,6 +17,8 @@ MULTIPROCESSING_LIST_TYPE: TypeAlias = Sequence[model.Challenge]
 
 logger = logging.getLogger(__name__)
 
+
+forever = years(1000)
 
 class Matchmaking:
     """Challenge other bots."""
@@ -33,7 +36,7 @@ class Matchmaking:
         self.rate_limit_timer = Timer()
 
         # Maximum time between challenges, even if there are active games
-        self.max_wait_time = minutes(10) if self.matchmaking_cfg.allow_during_games else years(10)
+        self.max_wait_time = minutes(10) if self.matchmaking_cfg.allow_during_games else forever
         self.challenge_id = ""
 
         # (opponent name, game aspect) --> other bot is likely to accept challenge
@@ -49,6 +52,31 @@ class Matchmaking:
             self.add_to_block_list(name)
 
         self.online_block_list = OnlineBlocklist(self.matchmaking_cfg.online_block_list)
+
+        self.local_block_list: Path | None = None
+        self.permablock = bool(self.matchmaking_cfg.challenge_decliner_file_name)
+        if self.permablock:
+            self.local_block_list = Path(self.matchmaking_cfg.challenge_decliner_file_name)
+            self.read_local_block_list()
+
+    def read_local_block_list(self) -> None:
+        """Read the local block list file and reload blocks from previous session."""
+        if not self.local_block_list or not self.local_block_list.exists():
+            return
+
+        if not self.local_block_list.is_file():
+            raise ValueError(
+                f"Configuration matchmaking: challenge_decliner_file_name: {self.local_block_list} is not a file.")
+
+        logger.debug(f"Reading challenge decliner block list: {self.local_block_list}")
+        with self.local_block_list.open(encoding="utf8") as local_list:
+            for line_raw in local_list:
+                line = line_raw.strip()
+                if not line:
+                    continue
+
+                name, reason = line.split(",")
+                self.add_challenge_filter(name, reason, forever, add_to_file=False)
 
     def should_create_challenge(self) -> bool:
         """Whether we should create a challenge."""
@@ -103,9 +131,10 @@ class Matchmaking:
             timeout = cast(datetime.timedelta, response.get("rate_limit_timeout"))
             self.rate_limit_timer = Timer(timeout)
         elif response.get("opponent_is_rate_limited"):
-            self.add_challenge_filter(username, "", response.get("rate_limit_timeout"))
+            timeout = cast(datetime.timedelta, response.get("rate_limit_timeout"))
+            self.add_challenge_filter(username, "", timeout, add_to_file=False)
         else:
-            self.add_challenge_filter(username, "")
+            self.add_challenge_filter(username, "", days(1), add_to_file=False)
         self.show_earliest_challenge_time()
 
     def perf(self) -> dict[str, PerfType]:
@@ -220,19 +249,30 @@ class Matchmaking:
         value: str = config.lookup(parameter)
         return value if value != "random" else random.choice(choices)
 
-    def challenge(self, active_games: set[str], challenge_queue: MULTIPROCESSING_LIST_TYPE, max_games: int) -> None:
+    def challenge(self, active_games: dict[str, str], challenge_queue: MULTIPROCESSING_LIST_TYPE,
+                  max_bot_games: int) -> None:
         """
         Challenge an opponent.
 
-        :param active_games: The games that the bot is playing.
+        :param active_games: The games that the bot is playing (game ID -> opponent name).
         :param challenge_queue: The queue containing the challenges.
-        :param max_games: The maximum allowed number of simultaneous games.
+        :param max_bot_games: The maximum allowed number of simultaneous games against bots.
         """
-        max_games_for_matchmaking = max_games if self.matchmaking_cfg.allow_during_games else min(1, max_games)
-        game_count = len(active_games) + len(challenge_queue)
-        if (game_count >= max_games_for_matchmaking
-                or (game_count > 0 and self.last_challenge_created_delay.time_since_reset() < self.max_wait_time)
-                or not self.should_create_challenge()):
+        if not self.should_create_challenge():
+            return
+
+        # If matchmaking is not allowed while playing other games, don't create
+        # a challenge when any game (against a bot or a human) is in progress.
+        if not self.matchmaking_cfg.allow_during_games and active_games:
+            return
+
+        # Count only games against bots: matchmaking only challenges bots, and
+        # human games must not count toward the bot-game limit (otherwise a bot
+        # whose slots are filled by humans would stop matchmaking even though
+        # bot slots remain free).
+        bot_game_count = model.Player.count_bot_games(active_games) + len(challenge_queue)
+        if (bot_game_count >= max_bot_games
+                or (bot_game_count > 0 and self.last_challenge_created_delay.time_since_reset() < self.max_wait_time)):
             return
 
         logger.info("Challenging a random bot")
@@ -275,13 +315,18 @@ class Matchmaking:
 
     def add_to_block_list(self, username: str) -> None:
         """Add a bot to the blocklist."""
-        self.add_challenge_filter(username, "", years(10))
+        self.add_challenge_filter(username, "", forever, add_to_file=False)
 
     def in_block_list(self, username: str) -> bool:
         """Check if an opponent is in the block list to prevent future challenges."""
         return (not self.should_accept_challenge(username, "")) or username in self.online_block_list
 
-    def add_challenge_filter(self, username: str, game_aspect: str, timeout: datetime.timedelta | None = None) -> None:
+    def add_challenge_filter(self,
+                             username: str,
+                             game_aspect: str,
+                             timeout: datetime.timedelta,
+                             *,
+                             add_to_file: bool) -> None:
         """
         Prevent creating another challenge for a timeout when an opponent has declined a challenge.
 
@@ -290,7 +335,11 @@ class Matchmaking:
         challenge. If the parameter is empty, that is equivalent to adding the opponent to the block list.
         :param timeout: The amount of time to not challenge an opponent. If None, the default is a day.
         """
-        self.challenge_type_acceptable[(username, game_aspect)] = Timer(timeout or days(1))
+        timeout_timer = Timer(timeout)
+        self.challenge_type_acceptable[(username, game_aspect)] = timeout_timer
+        if add_to_file and self.local_block_list:
+            with self.local_block_list.open("a", encoding="utf8") as block_list:
+                block_list.write(f"{username},{game_aspect}\n")
 
     def should_accept_challenge(self, username: str, game_aspect: str) -> bool:
         """
@@ -340,8 +389,10 @@ class Matchmaking:
         if reason_key not in decline_details:
             logger.warning(f"Unknown decline reason received: {reason_key}")
         game_problem = decline_details.get(reason_key, "") if self.challenge_filter == FilterType.FINE else ""
-        self.add_challenge_filter(opponent.name, game_problem)
-        logger.info(f"Will not challenge {opponent} to another {game_problem}".strip() + " game today.")
+        timeout = forever if self.permablock else days(1)
+        self.add_challenge_filter(opponent.name, game_problem, timeout, add_to_file=True)
+        time_span = "" if self.permablock else " today"
+        logger.info(f"Will not challenge {opponent} to another {game_problem}".strip() + f" game{time_span}.")
 
         self.show_earliest_challenge_time()
 
