@@ -93,3 +93,18 @@ def test_copy_without_stack_preserves_current_position() -> None:
     assert copied.fen() == board.fen()
     assert copied.move_stack == []
     assert copied.turn == board.turn
+
+
+def test_alice_play_sequence_uses_second_board() -> None:
+    """Alice moves should use Alice SAN rules and transfer pieces between boards."""
+    board = _board("alice")
+    moves = [FairyMove("e2e4"), FairyMove("e7e5"), FairyMove("g1f3")]
+
+    assert board.variation_san(moves) == ["e4", "e5", "Nf3"]
+
+    for san in ("e4", "e5", "Nf3"):
+        board.push_xboard(san)
+
+    assert board.move_stack == moves
+    assert board.fen() == "rnbqkbnr/pppp1ppp/8/4|p3/4|P3/5|N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+    assert board.turn is False
