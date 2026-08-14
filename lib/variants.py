@@ -1,7 +1,7 @@
 # ruff: noqa: D100, D101, D102, D103, D105, D107, PLW1641
 
 import re
-from typing import Literal, Self, SupportsInt, cast
+from typing import Literal, Protocol, Self, SupportsInt, cast
 
 import chess
 
@@ -15,6 +15,14 @@ START_FEN["alice"] = sf_alice.start_fen("alice")
 
 TEN_RANK_BOARD_HEIGHT = 10
 RANKED_SQUARE_REGEX = re.compile(r"([a-z])([0-9]{1,2})")
+
+
+class Rules(Protocol):
+    def legal_moves(self, variant: str, fen: str, movelist: list[str]) -> list[str]: ...
+
+    def get_fen(self, variant: str, fen: str, movelist: list[str]) -> str: ...
+
+    def get_san(self, variant: str, fen: str, move: str) -> str: ...
 
 
 def _normalize_variant_name(variant: str) -> tuple[str, str, bool]:
@@ -137,6 +145,7 @@ class FairyBoard:
     xboard_variant: str
     chess960: bool
     initial_fen: str
+    rules: Rules
 
     def __init__(self, initial_fen: str | None = None, count_started: int = 0) -> None:
         del count_started
