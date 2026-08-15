@@ -2,12 +2,14 @@
 
 from lib import lichess
 from lib.timer import Timer, seconds
+from lib.variants import BOT_CAPABILITIES_HEADER
 from collections import defaultdict
 from requests.models import Response
 import logging
 import os
 import pytest
 from typing import cast
+from unittest.mock import patch
 
 
 def mock_response(status_code: int, body: dict[str, object], headers: dict[str, str] | None = None) -> Response:
@@ -55,6 +57,23 @@ def test_challenge_429_without_retry_after_uses_exponential_backoff() -> None:
     assert first_response["rate_limit_timeout"] == seconds(60)
     assert second_response["rate_limit_timeout"] == seconds(120)
     assert li.challenge_rate_limit_backoff == seconds(240)
+
+
+def test_event_stream_sends_bot_capabilities_header() -> None:
+    """The initial event-stream request should advertise the configured variants."""
+    li = lichess_without_init()
+    response = cast(Response, object())
+    capabilities = '{"version":1,"variants":["standard"]}'
+
+    with patch.object(lichess.Lichess, "api_get", return_value=response) as api_get:
+        assert li.get_event_stream(capabilities) is response
+
+    api_get.assert_called_once_with(
+        "stream_event",
+        headers={BOT_CAPABILITIES_HEADER: capabilities},
+        stream=True,
+        timeout=15,
+    )
 
 
 def test_lichess() -> None:

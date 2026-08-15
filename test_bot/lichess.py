@@ -184,7 +184,7 @@ class Lichess(OriginalLichess):
     def abort(self, game_id: str) -> None:
         """Isn't used in tests."""
 
-    def get_event_stream(self) -> EventStream:
+    def get_event_stream(self, capabilities: str) -> EventStream:  # noqa: ARG002
         """Send the `EventStream`."""
         events = EventStream(self.sent_game)
         self.sent_game = True

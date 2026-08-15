@@ -1,8 +1,9 @@
 """Tests for the pychess variant board adapter."""
 
+import json
 from typing import cast
 
-from lib.variants import FairyBoard, FairyMove, fairy_board
+from lib.variants import FairyBoard, FairyMove, bot_capabilities_header, fairy_board
 
 
 def _board(variant: str) -> FairyBoard:
@@ -26,6 +27,16 @@ def test_variant_name_normalization() -> None:
     assert chess960.uci_variant == "chess"
     assert chess960.xboard_variant == "fischerandom"
     assert chess960.chess960 is True
+
+
+def test_bot_capabilities_normalize_chess960_twins() -> None:
+    """Challenge configuration keys should advertise PyChess's canonical variant twins."""
+    payload = json.loads(bot_capabilities_header(["standard", "fischerandom", "Crazyhouse", "crazyhouse960"]))
+
+    assert payload == {
+        "version": 1,
+        "variants": ["chess960", "crazyhouse", "crazyhouse960", "standard"],
+    }
 
 
 def test_xboard_xiangqi_accepts_cecp_zero_based_ranks() -> None:

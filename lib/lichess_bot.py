@@ -1,6 +1,6 @@
 """The main module that controls lichess-bot."""
 import argparse
-from lib.variants import fairy_board  # order is important (we monkeypatch chess.Move)
+from lib.variants import bot_capabilities_header, fairy_board  # order is important (we monkeypatch chess.Move)
 import chess
 import chess.pgn
 from lib import engine_wrapper, model, lichess, matchmaking
@@ -112,11 +112,16 @@ def upgrade_account(li: lichess.Lichess) -> bool:
     return True
 
 
-def watch_control_stream(control_queue: CONTROL_QUEUE_TYPE, li: lichess.Lichess) -> None:
+def watch_control_stream(
+    control_queue: CONTROL_QUEUE_TYPE,
+    li: lichess.Lichess,
+    supported_variants: list[str],
+) -> None:
     """Put the events in a queue."""
+    capabilities = bot_capabilities_header(supported_variants)
     while not stop.terminated:
         try:
-            with li.get_event_stream() as response:
+            with li.get_event_stream(capabilities) as response:
                 lines = response.iter_lines()
                 for line in lines:
                     if line:
@@ -259,7 +264,10 @@ def start(li: lichess.Lichess, user_profile: UserProfileType, config: Configurat
     manager = multiprocessing.Manager()
     challenge_queue: MULTIPROCESSING_LIST_TYPE = manager.list()
     control_queue: CONTROL_QUEUE_TYPE = manager.Queue()
-    control_stream = multiprocessing.Process(target=watch_control_stream, args=(control_queue, li))
+    control_stream = multiprocessing.Process(
+        target=watch_control_stream,
+        args=(control_queue, li, list(config.challenge.variants)),
+    )
     control_stream.start()
     correspondence_pinger = multiprocessing.Process(target=do_correspondence_ping,
                                                     args=(control_queue,

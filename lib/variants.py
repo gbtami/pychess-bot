@@ -1,6 +1,8 @@
 # ruff: noqa: D100, D101, D102, D103, D105, D107, PLW1641
 
+import json
 import re
+from collections.abc import Iterable
 from typing import Literal, Protocol, Self, SupportsInt, cast
 
 import chess
@@ -15,6 +17,9 @@ START_FEN["alice"] = sf_alice.start_fen("alice")
 
 TEN_RANK_BOARD_HEIGHT = 10
 RANKED_SQUARE_REGEX = re.compile(r"([a-z])([0-9]{1,2})")
+BOT_CAPABILITIES_HEADER = "X-PyChess-Bot-Capabilities"
+BOT_CAPABILITIES_VERSION = 1
+BOT_CAPABILITIES_MAX_BYTES = 6 * 1024
 
 
 class Rules(Protocol):
@@ -80,6 +85,18 @@ def normalize_challenge_variant_key(variant: str, *, chess960: bool = False) -> 
     if is_chess960:
         return "chess960" if canonical == "standard" else f"{canonical}960"
     return canonical
+
+
+def bot_capabilities_header(variants: Iterable[str]) -> str:
+    """Serialize configured challenge variants for the PyChess event-stream request."""
+    normalized_variants = sorted({normalize_challenge_variant_key(variant) for variant in variants})
+    payload = json.dumps(
+        {"version": BOT_CAPABILITIES_VERSION, "variants": normalized_variants},
+        separators=(",", ":"),
+    )
+    if len(payload.encode("utf-8")) > BOT_CAPABILITIES_MAX_BYTES:
+        raise ValueError("The configured variant capability list is too large for an HTTP header.")
+    return payload
 
 
 def normalize_incoming_challenge_variant_key(

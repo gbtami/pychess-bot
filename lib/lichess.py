@@ -172,6 +172,7 @@ class Lichess:
                           giveup_log_level=logging.DEBUG)
     def api_get(self, endpoint_name: str, *template_args: str,
                 params: dict[str, str] | None = None,
+                headers: dict[str, str] | None = None,
                 stream: bool = False, timeout: int = 2) -> requests.Response:
         """
         Send a GET to lichess.org.
@@ -179,6 +180,7 @@ class Lichess:
         :param endpoint_name: The name of the endpoint.
         :param template_args: The values that go in the url (e.g. the challenge id if `endpoint_name` is `accept`).
         :param params: Parameters sent to lichess.org.
+        :param headers: Additional request headers.
         :param stream: Whether the data returned from lichess.org should be streamed.
         :param timeout: The amount of time in seconds to wait for a response.
         :return: lichess.org's response.
@@ -186,7 +188,7 @@ class Lichess:
         logging.getLogger("backoff").setLevel(self.logging_level)
         path_template = self.get_path_template(endpoint_name)
         url = urljoin(self.baseUrl, path_template.format(*template_args))
-        response = self.session.get(url, params=params, timeout=timeout, stream=stream)
+        response = self.session.get(url, params=params, headers=headers, timeout=timeout, stream=stream)
 
         if is_new_rate_limit(response):
             delay = seconds(1 if endpoint_name == "move" else 60)
@@ -398,9 +400,16 @@ class Lichess:
         """Aborts a game."""
         self.api_post("abort", game_id)
 
-    def get_event_stream(self) -> requests.models.Response:
+    def get_event_stream(self, capabilities: str) -> requests.models.Response:
         """Get a stream of the events (e.g. challenge, gameStart)."""
-        return self.api_get("stream_event", stream=True, timeout=15)
+        from lib.variants import BOT_CAPABILITIES_HEADER
+
+        return self.api_get(
+            "stream_event",
+            headers={BOT_CAPABILITIES_HEADER: capabilities},
+            stream=True,
+            timeout=15,
+        )
 
     def get_game_stream(self, game_id: str) -> requests.models.Response:
         """Get  stream of the in-game events (e.g. moves by the opponent)."""
