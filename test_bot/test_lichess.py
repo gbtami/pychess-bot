@@ -59,6 +59,17 @@ def test_challenge_429_without_retry_after_uses_exponential_backoff() -> None:
     assert li.challenge_rate_limit_backoff == seconds(240)
 
 
+def test_token_check_uses_restart_tolerant_timeout() -> None:
+    """Startup token validation should tolerate a temporarily slow server."""
+    credential = "dummy"
+    token_response = {credential: {"scopes": "bot:play"}}
+
+    with patch.object(lichess.Lichess, "api_post", return_value=token_response) as api_post:
+        lichess.Lichess(credential, "https://www.pychess.org/", "0.0.0", logging.DEBUG, 3)
+
+    api_post.assert_called_once_with("token_test", data=credential, timeout=30)
+
+
 def test_event_stream_sends_bot_capabilities_header() -> None:
     """The initial event-stream request should advertise the configured variants."""
     li = lichess_without_init()

@@ -148,7 +148,7 @@ class Lichess:
         self.challenge_rate_limit_backoff = seconds(60)
 
         # Confirm that the OAuth token has the proper permission to play on lichess
-        token_response = cast(TOKEN_TESTS_TYPE, self.api_post("token_test", data=token))
+        token_response = cast(TOKEN_TESTS_TYPE, self.api_post("token_test", data=token, timeout=30))
         token_info = token_response.get(token)
 
         if not token_info:
@@ -255,7 +255,8 @@ class Lichess:
                  headers: dict[str, str] | None = None,
                  params: dict[str, str] | None = None,
                  payload: REQUESTS_PAYLOAD_TYPE | None = None,
-                 raise_for_status: bool = True) -> ChallengeType | TOKEN_TESTS_TYPE | None:
+                 raise_for_status: bool = True,
+                 timeout: float = 2) -> ChallengeType | TOKEN_TESTS_TYPE | None:
         """
         Send a POST to lichess.org.
 
@@ -266,12 +267,13 @@ class Lichess:
         :param params: Parameters sent to lichess.org.
         :param payload: Payload sent to lichess.org.
         :param raise_for_status: Whether to raise an exception if the response contains an error code.
+        :param timeout: Number of seconds to wait for the server to respond.
         :return: lichess.org's response in a dict.
         """
         logging.getLogger("backoff").setLevel(self.logging_level)
         path_template = self.get_path_template(endpoint_name)
         url = urljoin(self.baseUrl, path_template.format(*template_args))
-        response = self.session.post(url, data=data, headers=headers, params=params, json=payload, timeout=2)
+        response = self.session.post(url, data=data, headers=headers, params=params, json=payload, timeout=timeout)
 
         if endpoint_name == "challenge":
             return self.handle_challenge(response)
