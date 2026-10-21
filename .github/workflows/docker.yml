@@ -12,7 +12,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only the upstream repository may publish upstream Docker images.
+    if: ${{ github.repository == 'lichess-bot-devs/lichess-bot' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == 'lichess-bot-devs/lichess-bot' && github.event.workflow_run.head_branch == 'master' }}
     steps:
       - uses: actions/checkout@v7
 
