@@ -1,65 +1,46 @@
-<div align="center">
+# PyChess BOT
 
-  ![lichess-bot](https://github.com/lichess-bot-devs/lichess-bot-images/blob/main/lichess-bot-icon-400.png)
+Run your own chess-variant engine as a BOT opponent on [PyChess](https://www.pychess.org/).
+This project is a PyChess-specific fork of [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot).
+It retains upstream engine handling and much of its internal terminology to make
+future upstream merges easier.
 
-  <h1>lichess-bot</h1>
+## Quick start
 
-  A bridge between [lichess.org](https://lichess.org) and bots.
-  <br>
-  <strong>[Explore lichess-bot docs »](https://github.com/lichess-bot-devs/lichess-bot/wiki)</strong>
-  <br>
-  <br>
-  [![Python Build](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-build.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-build.yml)
-  [![Python Test](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-test.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/python-test.yml)
-  [![Mypy](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/mypy.yml/badge.svg)](https://github.com/lichess-bot-devs/lichess-bot/actions/workflows/mypy.yml)
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and obtain
+an executable UCI or XBoard chess engine supported by your chosen variant.
 
-</div>
+```bash
+git clone https://github.com/gbtami/pychess-bot.git
+cd pychess-bot
+uv sync
+cp config.yml.default config.yml
+```
 
-## Overview
+Edit `config.yml`: set `url: "https://www.pychess.org/"`, enter the PyChess
+BOT token, and configure `engine.dir` and `engine.name` to point to your engine.
+Then run:
 
-[lichess-bot](https://github.com/lichess-bot-devs/lichess-bot) is a free bridge
-between the [Lichess Bot API](https://lichess.org/api#tag/Bot) and chess engines.
+```bash
+uv run python lichess-bot.py -u   # Convert the new account to a BOT account (once)
+uv run python lichess-bot.py      # Start accepting challenges
+```
 
-With lichess-bot, you can create and operate a bot on lichess. Your bot will be able to play against humans and bots alike, and you will be able to view these games live on lichess.
+**Important:** Create a dedicated PyChess account with **no previously played
+games** before upgrading it to BOT status. Treat your API token as a password;
+never commit `config.yml`. Conversion is only needed once. Your engine and this
+process must remain running to play games.
 
-See also the lichess-bot [documentation](https://github.com/lichess-bot-devs/lichess-bot/wiki) for further usage help.
+See [the PyChess setup guide](docs/pychess-quickstart.md) for token scopes,
+engine configuration, and troubleshooting. `uv` replaces manual virtualenv and
+`pip install -r requirements.txt` steps; the legacy entrypoint remains for
+upstream compatibility.
 
-## Features
-Supports:
-- Every variant and time control
-- UCI, XBoard, and Homemade engines
-- Matchmaking (challenging other bots)
-- Offering Draws and Resigning
-- Participating in tournaments
-- Accepting move takeback requests from opponents
-- Saving games as PGN
-- Local & Online Opening Books
-- Local & Online Endgame Tablebases
+## Origin and license
 
-Can run on:
-- Python 3.10 and later
-- Windows, Linux and MacOS
-- Docker
-
-## Steps
-1. [Install lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-Install)
-2. [Create a lichess OAuth token](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-create-a-Lichess-OAuth-token)
-3. [Setup the engine](https://github.com/lichess-bot-devs/lichess-bot/wiki/Setup-the-engine)
-4. [Configure lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/Configure-lichess-bot)
-5. [Upgrade to a BOT account](https://github.com/lichess-bot-devs/lichess-bot/wiki/Upgrade-to-a-BOT-account)
-6. [Run lichess-bot](https://github.com/lichess-bot-devs/lichess-bot/wiki/How-to-Run-lichess%E2%80%90bot)
-
-## Advanced options
-- [Create a homemade engine](https://github.com/lichess-bot-devs/lichess-bot/wiki/Create-a-homemade-engine)
-- [Add extra customizations](https://github.com/lichess-bot-devs/lichess-bot/wiki/Extra-customizations)
-
-<br />
-
-## Acknowledgements
-Thanks to the Lichess team, especially T. Alexander Lystad and Thibault Duplessis for working with the LeelaChessZero team to get this API up. Thanks to [Niklas Fiekas](https://github.com/niklasf) and his [python-chess](https://github.com/niklasf/python-chess) code which allows engine communication seamlessly.
-
-## License
-lichess-bot is licensed under the AGPLv3 (or any later version at your option). Check out the [LICENSE file](https://github.com/lichess-bot-devs/lichess-bot/blob/master/LICENSE) for the full text.
-
-## Citation
-If this software has been used for research purposes, please cite it using the "Cite this repository" menu on the right sidebar. For more information, check the [CITATION file](https://github.com/lichess-bot-devs/lichess-bot/blob/master/CITATION.cff).
+This is a fork of the [lichess-bot project](https://github.com/lichess-bot-devs/lichess-bot),
+which originated with the Lichess community. We gratefully retain upstream
+attribution, the original project history, and its AGPL-3.0-or-later license.
+See [LICENSE](LICENSE) and [upstream documentation](https://github.com/lichess-bot-devs/lichess-bot/wiki)
+for general engine features; **upstream Lichess account and token instructions do
+not apply to PyChess**.

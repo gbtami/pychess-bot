@@ -1,0 +1,29 @@
+# PyChess-local uv environment: deliberately no package build or Python module
+# rename. Keep dependency constraints aligned with upstream requirements.txt.
+[project]
+name = "pychess-bot"
+version = "0.1.0"
+description = "PyChess variant BOT bridge, based on lichess-bot"
+requires-python = ">=3.10"
+dependencies = [
+  "chess~=1.11",
+  "PyYAML~=6.0",
+  "requests~=2.34",
+  "backoff~=2.2",
+  "rich~=15.0",
+  "pyffish==0.0.89",
+  "pyffish-alice==0.0.3",
+]
+
+[dependency-groups]
+dev = [
+  "pytest~=9.1",
+  "pytest-timeout~=2.4",
+  "ruff~=0.16.1",
+  "mypy~=2.3",
+  "types-requests~=2.33",
+  "types-PyYAML~=6.0",
+]
+
+[tool.uv]
+package = false
