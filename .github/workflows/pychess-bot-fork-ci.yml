@@ -26,6 +26,8 @@ jobs:
           - check: ruff
             python: "3.14"
           - check: pytest
+            python: "3.12"
+          - check: pytest
             python: "3.14"
           - check: mypy
             python: "3.14"
@@ -41,6 +43,9 @@ jobs:
 
       # The PyChess fork has a local-only pyproject.toml; no package build is needed.
       # Until a lockfile is committed, resolve from the declared constraints.
+      - name: Check dependency manifests agree
+        run: python tools/check_dependency_sync.py
+
       - name: Install dependencies
         run: uv sync --python ${{ matrix.python }} --group dev
 
