@@ -43,6 +43,20 @@ options the chosen engine does not recognize. For example, Alice-Stockfish is a
 specialized engine for Alice Chess; do not assume it supports the usual
 `UCI_Variant` option or that every engine has the same NNUE configuration.
 
+## Verify installation without connecting to PyChess
+
+After `uv sync`, check that the Python dependencies and BOT command load:
+
+```bash
+uv run --no-sync python lichess-bot.py --help
+```
+
+This command prints the available flags and exits **without reading your BOT
+configuration, starting an engine, or contacting PyChess**. It is also exercised
+in the PyChess-specific CI workflow on Python 3.12 and 3.14. A successful
+`--help` check does not establish that a particular engine works or that your
+BOT token is valid.
+
 ## Convert the account and start
 
 With your new, game-free account and its BOT token configured:

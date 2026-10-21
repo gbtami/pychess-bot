@@ -61,6 +61,12 @@ jobs:
         if: matrix.check == 'ruff'
         run: uv run --no-sync ruff check --config test_bot/ruff.toml
 
+      # --help exits before reading config.yml, creating an engine, or
+      # connecting to PyChess. Catch broken imports/entrypoint after uv sync.
+      - name: Smoke test BOT CLI (offline)
+        if: matrix.check == 'pytest'
+        run: uv run --no-sync python lichess-bot.py --help
+
       - name: Run pytest
         if: matrix.check == 'pytest'
         # Never pass production credentials to unit tests. The inherited
