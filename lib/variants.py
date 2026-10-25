@@ -2,7 +2,7 @@
 
 import json
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Literal, Protocol, SupportsInt, cast
 from typing_extensions import Self
 
@@ -88,13 +88,25 @@ def normalize_challenge_variant_key(variant: str, *, chess960: bool = False) -> 
     return canonical
 
 
-def bot_capabilities_header(variants: Iterable[str]) -> str:
+def bot_capabilities_header(variants: Iterable[str], engine: Mapping[str, str] | None = None) -> str:
     """Serialize configured challenge variants for the PyChess event-stream request."""
     normalized_variants = sorted({normalize_challenge_variant_key(variant) for variant in variants})
+    capabilities: dict[str, object] = {"version": BOT_CAPABILITIES_VERSION, "variants": normalized_variants}
+    if engine:
+        identity = {
+            key: " ".join(engine.get(key, "").split())[:limit]
+            for key, limit in (("name", 128), ("author", 256))
+        }
+        if identity["name"]:
+            capabilities["engine"] = {key: value for key, value in identity.items() if value}
     payload = json.dumps(
-        {"version": BOT_CAPABILITIES_VERSION, "variants": normalized_variants},
+        capabilities,
         separators=(",", ":"),
     )
+    if len(payload.encode("utf-8")) > BOT_CAPABILITIES_MAX_BYTES and "engine" in capabilities:
+        # Optional profile details must not prevent advertising supported variants.
+        capabilities.pop("engine")
+        payload = json.dumps(capabilities, separators=(",", ":"))
     if len(payload.encode("utf-8")) > BOT_CAPABILITIES_MAX_BYTES:
         raise ValueError("The configured variant capability list is too large for an HTTP header.")
     return payload

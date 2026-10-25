@@ -91,6 +91,12 @@ operation. The bot works only while this process and your engine are online.
   a deadline for server recovery. A disconnected BOT can temporarily disappear
   from the site's online list until its connection is restored.
 
+UCI engines automatically advertise their `id name` and `id author` values
+when connecting to PyChess. Servers supporting engine profiles display these
+in the BOT's player summary, including the last reported identity while the
+BOT is offline. Restart the BOT after updating its engine to refresh these
+details. Engine paths and UCI options are not advertised.
+
 The project is based on
 [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot) and uses its
 AGPL-3.0-or-later license. Some optional `lichess_*` configuration sections

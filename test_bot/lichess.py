@@ -161,6 +161,7 @@ class Lichess(OriginalLichess):
         :param clock_queue: An interprocess queue to send game clock information to the mock game stream.
         """
         self.baseUrl = "testing"
+        self.engine_info = {}
         self.move_queue = move_queue
         self.board_queue = board_queue
         self.clock_queue = clock_queue

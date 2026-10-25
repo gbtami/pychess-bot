@@ -118,7 +118,7 @@ def watch_control_stream(
     supported_variants: list[str],
 ) -> None:
     """Put the events in a queue."""
-    capabilities = bot_capabilities_header(supported_variants)
+    capabilities = bot_capabilities_header(supported_variants, li.engine_info)
     while not stop.terminated:
         try:
             with li.get_event_stream(capabilities) as response:
@@ -1218,14 +1218,15 @@ def start_lichess_bot() -> None:
         with open(os.path.join(auto_log_directory, "config.log"), "w") as config_log:
             log_config(CONFIG.config, config_log.write)
     logger.info("Checking engine configuration ...")
-    with engine_wrapper.create_engine(CONFIG):
-        pass
+    with engine_wrapper.create_engine(CONFIG) as engine:
+        engine_info = dict(engine.engine.id) if CONFIG.engine.protocol == "uci" else {}
     logger.info("Engine configuration OK")
 
     max_retries = CONFIG.engine.online_moves.max_retries
     check_python_version()
     log_python_and_libraries()
     li = lichess.Lichess(CONFIG.token, CONFIG.url, __version__, logging_level, max_retries)
+    li.engine_info = engine_info
 
     user_profile = li.get_profile()
     username = user_profile["username"]

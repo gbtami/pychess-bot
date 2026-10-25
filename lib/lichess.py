@@ -146,6 +146,7 @@ class Lichess:
         self.max_retries = max_retries
         self.rate_limit_timers: defaultdict[str, Timer] = defaultdict(Timer)
         self.challenge_rate_limit_backoff = seconds(60)
+        self.engine_info: dict[str, str] = {}
 
         # Confirm that the OAuth token has the proper permission to play on lichess
         token_response = cast(TOKEN_TESTS_TYPE, self.api_post("token_test", data=token, timeout=30))
