@@ -26,6 +26,8 @@ jobs:
           - check: ruff
             python: "3.14"
           - check: pytest
+            python: "3.10"
+          - check: pytest
             python: "3.12"
           - check: pytest
             python: "3.14"
@@ -41,13 +43,12 @@ jobs:
           python-version: ${{ matrix.python }}
           enable-cache: true
 
-      # The PyChess fork has a local-only pyproject.toml; no package build is needed.
-      # Until a lockfile is committed, resolve from the declared constraints.
-      - name: Check dependency manifests agree
-        run: python tools/check_dependency_sync.py
-
+      # The PyChess fork uses uv without building a Python package.
       - name: Install dependencies
-        run: uv sync --python ${{ matrix.python }} --group dev
+        run: uv sync --locked --python ${{ matrix.python }} --group dev
+
+      - name: Check dependency manifests agree
+        run: uv run --no-sync python tools/check_dependency_sync.py
 
       - name: Restore engines
         id: restore-engines

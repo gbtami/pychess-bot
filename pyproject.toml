@@ -13,16 +13,18 @@ dependencies = [
   "rich~=15.0",
   "pyffish==0.0.90",
   "pyffish-alice==0.0.3",
+  "typing_extensions>=4.0",
 ]
 
 [dependency-groups]
 dev = [
   "pytest~=9.1",
   "pytest-timeout~=2.4",
-  "ruff~=0.16.1",
-  "mypy~=2.3",
+  "ruff~=0.17.1",
+  "mypy~=2.4",
   "types-requests~=2.33",
   "types-PyYAML~=6.0",
+  "tomli>=1.1.0; python_version < '3.11'",
 ]
 
 [tool.uv]

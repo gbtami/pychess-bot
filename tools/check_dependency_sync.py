@@ -6,7 +6,12 @@ Keep this check out of inherited source files to minimize merge conflicts.
 
 import logging
 from pathlib import Path
-import tomllib
+import sys
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 ROOT = Path(__file__).resolve().parent.parent

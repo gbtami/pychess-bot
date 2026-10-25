@@ -5,3 +5,4 @@ backoff~=2.2
 rich~=15.0
 pyffish==0.0.90
 pyffish-alice==0.0.3
+typing_extensions>=4.0

@@ -3,7 +3,8 @@
 import json
 import re
 from collections.abc import Iterable
-from typing import Literal, Protocol, Self, SupportsInt, cast
+from typing import Literal, Protocol, SupportsInt, cast
+from typing_extensions import Self
 
 import chess
 

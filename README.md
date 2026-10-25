@@ -13,7 +13,7 @@ an executable UCI or XBoard chess engine supported by your chosen variant.
 ```bash
 git clone https://github.com/gbtami/pychess-bot.git
 cd pychess-bot
-uv sync
+uv sync --locked
 cp config.yml.default config.yml
 ```
 
