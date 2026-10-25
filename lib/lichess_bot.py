@@ -1284,7 +1284,7 @@ def start_program() -> None:
             # Restart on network errors.
             try:
                 start_lichess_bot()
-            except RequestException:
+            except (RequestException, RemoteDisconnected):
                 stop.restart = True
                 logger.exception("Restarting lichess-bot due to a network error:")
             if stop.terminated or stop.force_quit:

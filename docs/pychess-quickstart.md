@@ -84,6 +84,12 @@ operation. The bot works only while this process and your engine are online.
   permissions, and protocol. Remove unsupported UCI options from the sample.
 - **No games:** Check the BOT account status and `challenge` filters in the
   copied configuration.
+- **Server deployments:** Keep the BOT process running while PyChess restarts.
+  The event stream reconnects automatically, and startup retries temporary
+  network failures, including closed connections, without an overall retry
+  limit. The 30-second token-check timeout applies to each request; it is not
+  a deadline for server recovery. A disconnected BOT can temporarily disappear
+  from the site's online list until its connection is restored.
 
 The project is based on
 [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot) and uses its
